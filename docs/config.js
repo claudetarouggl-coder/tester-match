@@ -1,5 +1,5 @@
 window.TM_CONFIG = {
-  SUPABASE_URL: "__FILL_ME__",
-  SUPABASE_ANON_KEY: "__FILL_ME__",
+  SUPABASE_URL: "https://ncdzngfuazaxnjcteftp.supabase.co",
+  SUPABASE_ANON_KEY: "sb_publishable_fUY2dqNL2mwNSikumqviHg_kifMPNbu",
   GA_ID: ""
 };
