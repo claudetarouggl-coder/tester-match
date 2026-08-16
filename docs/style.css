@@ -44,9 +44,10 @@ header.site nav a:hover{color:var(--link);opacity:1}
 
 /* ---- layout ---- */
 main#view{max-width:var(--maxw);margin:0 auto;padding:40px 20px;min-height:40vh}
-.seo{max-width:var(--maxw);margin:0 auto;padding:64px 20px 80px;color:var(--text);border-top:1px solid var(--border)}
-.seo h1{font-size:1.8rem;margin-bottom:20px;max-width:720px}
-.seo > p{margin-bottom:16px;max-width:720px}
+.seo{max-width:800px;margin:0 auto;padding:64px 20px 80px;color:var(--text);border-top:1px solid var(--border)}
+.seo h1{font-size:1.8rem;margin-bottom:20px}
+.seo > p{margin-bottom:16px}
+.seo p,.seo li,.seo dd{word-break:auto-phrase}
 .seo h2{font-size:1.35rem;margin:56px 0 16px}
 .seo h2:first-of-type{margin-top:40px}
 .seo h3{font-size:1.05rem;margin-bottom:8px}
