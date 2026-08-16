@@ -50,6 +50,12 @@ function loginRequired(){
 function setupBanner(){
   return ce("div", {cls: "setup-banner", text: "準備中です。Supabaseの設定が完了するまでお待ちください。"});
 }
+function emptyState(msg, ctaText, ctaHref){
+  var box = ce("div", {cls: "empty-state"});
+  box.appendChild(ce("p", {text: msg}));
+  if(ctaText && ctaHref) box.appendChild(ce("a", {cls: "btn", text: ctaText, attrs: {href: ctaHref}}));
+  return box;
+}
 
 // ---- router ----
 function currentRoute(){
@@ -68,6 +74,7 @@ function render(){
   clear(root);
   if(!configOK){ root.appendChild(setupBanner()); return; }
   var route = currentRoute();
+  document.body.classList.toggle("route-sub", route.name !== "home");
   if(route.name === "home") renderHome(root);
   else if(route.name === "app") renderAppDetail(root, route.id);
   else if(route.name === "post") renderPost(root);
@@ -80,25 +87,37 @@ var APP_COLUMNS = "id,owner,name,package_id,description,testers_needed,joined_co
 
 function appCard(a){
   var card = ce("div", {cls: "card"});
-  card.appendChild(ce("h3", {text: a.name}));
+  var head = ce("div", {cls: "card-head"});
+  head.appendChild(ce("h3", {text: a.name}));
+  head.appendChild(ce("span", {cls: "badge " + a.status, text: a.status === "recruiting" ? "募集中" : "終了"}));
+  card.appendChild(head);
   card.appendChild(ce("div", {cls: "pkg", text: a.package_id}));
   var desc = a.description || "";
   var truncated = desc.length > 120 ? desc.slice(0, 120) + "…" : desc;
-  card.appendChild(ce("div", {cls: "desc", text: truncated}));
+  card.appendChild(ce("div", {cls: "card-desc", text: truncated}));
   var pct = a.testers_needed > 0 ? Math.min(100, Math.round(a.joined_count / a.testers_needed * 100)) : 0;
   var prog = ce("div", {cls: "progress"});
   prog.appendChild(ce("div", {cls: "progress-bar", attrs: {style: "width:" + pct + "%"}}));
   card.appendChild(prog);
-  card.appendChild(ce("div", {cls: "meta", text: "参加状況 " + a.joined_count + " / " + a.testers_needed}));
-  var wrap = ce("div", {attrs: {style: "margin-top:.6rem"}});
+  card.appendChild(ce("div", {cls: "meta", text: a.joined_count + " / " + a.testers_needed + " 人"}));
+  var wrap = ce("div", {attrs: {style: "margin-top:.9rem"}});
   wrap.appendChild(ce("a", {cls: "btn", text: "詳細を見る", attrs: {href: "#/app/" + encodeURIComponent(a.id)}}));
   card.appendChild(wrap);
   return card;
 }
 
 function renderHome(root){
-  root.appendChild(ce("h1", {text: "募集中のアプリ"}));
-  var list = ce("div");
+  var hero = ce("div", {cls: "hero"});
+  hero.appendChild(ce("h1", {text: "Google Playのクローズドテスト、テスターをお互いに集め合う"}));
+  hero.appendChild(ce("p", {cls: "lead", text: "「12人のテスターが14日間オプトインを継続」というクローズドテストの条件を、同じ課題を抱える開発者同士でテスターを出し合ってクリアしましょう。"}));
+  var heroActions = ce("div", {cls: "hero-actions"});
+  heroActions.appendChild(ce("a", {cls: "btn", text: "無料で始める", attrs: {href: "#/login"}}));
+  heroActions.appendChild(ce("a", {cls: "btn secondary", text: "仕組みを見る", attrs: {href: "guide/"}}));
+  hero.appendChild(heroActions);
+  root.appendChild(hero);
+
+  root.appendChild(ce("h2", {text: "募集中のアプリ"}));
+  var list = ce("div", {cls: "app-grid"});
   list.appendChild(ce("p", {cls: "small", text: "読み込み中…"}));
   root.appendChild(list);
   supa.from("apps").select(APP_COLUMNS).eq("status", "recruiting").order("created_at", {ascending: false})
@@ -111,7 +130,7 @@ function renderHome(root){
       }
       var rows = res.data || [];
       if(rows.length === 0){
-        list.appendChild(ce("p", {cls: "small", text: "現在募集中のアプリはありません"}));
+        list.appendChild(emptyState("まだ掲載がありません。最初のアプリを掲載してみましょう", "アプリを掲載する", "#/post"));
         return;
       }
       for(var i = 0; i < rows.length; i++) list.appendChild(appCard(rows[i]));
@@ -128,15 +147,19 @@ function renderAppDetail(root, id){
       return;
     }
     var a = res.data;
-    root.appendChild(ce("h1", {text: a.name}));
-    root.appendChild(ce("div", {cls: "pkg", text: a.package_id}));
-    root.appendChild(ce("span", {cls: "badge " + a.status, text: a.status === "recruiting" ? "募集中" : "終了"}));
-    root.appendChild(ce("p", {cls: "desc", text: a.description}));
+    var overview = ce("div", {cls: "card"});
+    var head = ce("div", {cls: "card-head"});
+    head.appendChild(ce("h1", {text: a.name}));
+    head.appendChild(ce("span", {cls: "badge " + a.status, text: a.status === "recruiting" ? "募集中" : "終了"}));
+    overview.appendChild(head);
+    overview.appendChild(ce("div", {cls: "pkg", text: a.package_id}));
+    overview.appendChild(ce("p", {cls: "desc", text: a.description}));
     var pct = a.testers_needed > 0 ? Math.min(100, Math.round(a.joined_count / a.testers_needed * 100)) : 0;
     var prog = ce("div", {cls: "progress"});
     prog.appendChild(ce("div", {cls: "progress-bar", attrs: {style: "width:" + pct + "%"}}));
-    root.appendChild(prog);
-    root.appendChild(ce("div", {cls: "meta", text: "参加状況 " + a.joined_count + " / " + a.testers_needed}));
+    overview.appendChild(prog);
+    overview.appendChild(ce("div", {cls: "meta", text: a.joined_count + " / " + a.testers_needed + " 人"}));
+    root.appendChild(overview);
 
     var actions = ce("div", {cls: "section"});
     root.appendChild(actions);
@@ -175,7 +198,8 @@ function showSecrets(box, appId){
       box.appendChild(ce("p", {cls: "small", text: "参加情報を取得できませんでした"}));
       return;
     }
-    box.appendChild(ce("h2", {text: "参加方法"}));
+    var card = ce("div", {cls: "card"});
+    card.appendChild(ce("h2", {text: "参加方法"}));
     var ol = ce("ol");
     ol.appendChild(ce("li", {text: "①グループに参加する（下記の参加手順を参照）"}));
     var li2 = ce("li");
@@ -183,18 +207,21 @@ function showSecrets(box, appId){
     li2.appendChild(ce("a", {text: row.opt_in_url, attrs: {href: row.opt_in_url, target: "_blank", rel: "noopener"}}));
     ol.appendChild(li2);
     ol.appendChild(ce("li", {text: "③Playストアからインストールして指定の日数使う"}));
-    box.appendChild(ol);
-    box.appendChild(ce("h3", {text: "グループ参加情報"}));
-    box.appendChild(ce("p", {cls: "desc", text: row.group_join_info || ""}));
+    card.appendChild(ol);
+    card.appendChild(ce("h3", {text: "グループ参加情報"}));
+    card.appendChild(ce("p", {cls: "desc", text: row.group_join_info || ""}));
+    box.appendChild(card);
   });
 }
 
 function renderJoinForm(box, appId){
   clear(box);
+  var card = ce("div", {cls: "card"});
   var startBtn = ce("button", {text: "テスターとして参加する"});
-  box.appendChild(startBtn);
+  card.appendChild(startBtn);
+  box.appendChild(card);
   startBtn.addEventListener("click", function(){
-    clear(box);
+    clear(card);
     var form = ce("form");
     form.appendChild(ce("label", {text: "Googleメールアドレス（Playで使うアカウント）"}));
     var input = ce("input", {attrs: {type: "email", required: "required", placeholder: "you@gmail.com"}});
@@ -202,7 +229,7 @@ function renderJoinForm(box, appId){
     form.appendChild(ce("p", {cls: "hint", text: "このメールは開発者にのみ開示されます"}));
     var submit = ce("button", {attrs: {type: "submit"}, text: "参加する"});
     form.appendChild(submit);
-    box.appendChild(form);
+    card.appendChild(form);
     form.addEventListener("submit", function(ev){
       ev.preventDefault();
       submit.disabled = true;
@@ -224,6 +251,7 @@ function renderPost(root){
   if(!authUser){ root.appendChild(loginRequired()); return; }
   root.appendChild(ce("h1", {text: "アプリを掲載する"}));
   root.appendChild(ce("p", {cls: "small", text: "オープンβ期間中は掲載無料です"}));
+  var card = ce("div", {cls: "card"});
   var form = ce("form");
   function field(labelText, tag, attrs, hint){
     form.appendChild(ce("label", {text: labelText}));
@@ -232,15 +260,16 @@ function renderPost(root){
     if(hint) form.appendChild(ce("p", {cls: "hint", text: hint}));
     return input;
   }
-  var nameInput = field("アプリ名", "input", {type: "text", required: "required", maxlength: "80"});
+  var nameInput = field("アプリ名", "input", {type: "text", required: "required", maxlength: "80", placeholder: "例: マイタスク管理"});
   var pkgInput = field("パッケージID", "input", {type: "text", required: "required", placeholder: "com.example.app"}, "例: com.example.app");
   var optInInput = field("opt-in URL", "input", {type: "url", required: "required", placeholder: "https://play.google.com/apps/testing/..."}, "Play Consoleのクローズドテストopt-inリンク");
-  var groupInput = field("グループ参加手順", "textarea", {required: "required", rows: "4"}, "Googleグループの参加手順やURLを記載してください");
-  var descInput = field("アプリの説明", "textarea", {required: "required", rows: "4", maxlength: "2000"});
+  var groupInput = field("グループ参加手順", "textarea", {required: "required", rows: "4", placeholder: "例: 下記のGoogleグループに参加申請してください → https://groups.google.com/..."}, "Googleグループの参加手順やURLを記載してください");
+  var descInput = field("アプリの説明", "textarea", {required: "required", rows: "4", maxlength: "2000", placeholder: "例: シンプルなToDoアプリです。オフラインでも使えます。"});
   var needInput = field("募集人数", "input", {type: "number", min: "1", max: "100", value: "12", required: "required"});
   var submit = ce("button", {attrs: {type: "submit"}, text: "掲載する"});
   form.appendChild(submit);
-  root.appendChild(form);
+  card.appendChild(form);
+  root.appendChild(card);
   form.addEventListener("submit", function(ev){
     ev.preventDefault();
     submit.disabled = true;
@@ -271,22 +300,24 @@ function renderMe(root){
 
   var profSec = ce("div", {cls: "section"});
   profSec.appendChild(ce("h2", {text: "プロフィール"}));
-  var handleRow = ce("div");
+  var profCard = ce("div", {cls: "card"});
+  var handleRow = ce("div", {cls: "list-row"});
   handleRow.appendChild(ce("span", {text: authProfile ? authProfile.handle : "..."}));
   var editBtn = ce("button", {cls: "secondary", text: "変更"});
   handleRow.appendChild(editBtn);
   editBtn.addEventListener("click", function(){ startHandleEdit(handleRow); });
-  profSec.appendChild(handleRow);
+  profCard.appendChild(handleRow);
 
   var creditsP = ce("p", {cls: "stat"});
   creditsP.appendChild(ce("span", {cls: "n", text: authProfile ? String(authProfile.credits) : "-"}));
   creditsP.appendChild(document.createTextNode(" クレジット"));
-  profSec.appendChild(creditsP);
+  profCard.appendChild(creditsP);
 
-  profSec.appendChild(ce("h3", {text: "直近のクレジット履歴"}));
+  profCard.appendChild(ce("h3", {text: "直近のクレジット履歴"}));
   var eventsList = ce("div");
   eventsList.appendChild(ce("p", {cls: "small", text: "読み込み中…"}));
-  profSec.appendChild(eventsList);
+  profCard.appendChild(eventsList);
+  profSec.appendChild(profCard);
   root.appendChild(profSec);
 
   supa.from("credit_events").select("delta,source,created_at").order("created_at", {ascending: false}).limit(10)
@@ -302,7 +333,7 @@ function renderMe(root){
     });
 
   var appsSec = ce("div", {cls: "section"});
-  appsSec.appendChild(ce("h2", {text: "掲載中のアプリ"}));
+  appsSec.appendChild(ce("h2", {text: "掲載したアプリ"}));
   var appsList = ce("div");
   appsList.appendChild(ce("p", {cls: "small", text: "読み込み中…"}));
   appsSec.appendChild(appsList);
@@ -313,7 +344,7 @@ function renderMe(root){
       clear(appsList);
       if(res.error){ appsList.appendChild(ce("p", {cls: "small", text: "取得に失敗しました"})); return; }
       var rows = res.data || [];
-      if(rows.length === 0){ appsList.appendChild(ce("p", {cls: "small", text: "掲載しているアプリはありません"})); return; }
+      if(rows.length === 0){ appsList.appendChild(emptyState("まだ掲載したアプリはありません。最初のアプリを掲載してみましょう", "アプリを掲載する", "#/post")); return; }
       for(var i = 0; i < rows.length; i++) appsList.appendChild(myAppCard(rows[i]));
     });
 
@@ -329,7 +360,7 @@ function renderMe(root){
       clear(joinsList);
       if(res.error){ joinsList.appendChild(ce("p", {cls: "small", text: "取得に失敗しました"})); return; }
       var rows = res.data || [];
-      if(rows.length === 0){ joinsList.appendChild(ce("p", {cls: "small", text: "参加中のテストはありません"})); return; }
+      if(rows.length === 0){ joinsList.appendChild(emptyState("まだ参加中のテストはありません。気になるアプリを探してみましょう", "アプリを探す", "#/")); return; }
       var ids = [];
       for(var i = 0; i < rows.length; i++){ if(ids.indexOf(rows[i].app_id) === -1) ids.push(rows[i].app_id); }
       supa.from("apps").select("id,name").in("id", ids).then(function(ares){
@@ -372,10 +403,12 @@ function startHandleEdit(handleRow){
 
 function myAppCard(a){
   var card = ce("div", {cls: "card"});
-  card.appendChild(ce("h3", {text: a.name}));
+  var head = ce("div", {cls: "card-head"});
+  head.appendChild(ce("h3", {text: a.name}));
+  head.appendChild(ce("span", {cls: "badge " + a.status, text: a.status === "recruiting" ? "募集中" : "終了"}));
+  card.appendChild(head);
   card.appendChild(ce("div", {cls: "pkg", text: a.package_id}));
-  card.appendChild(ce("span", {cls: "badge " + a.status, text: a.status === "recruiting" ? "募集中" : "終了"}));
-  card.appendChild(ce("div", {cls: "meta", text: "参加状況 " + a.joined_count + " / " + a.testers_needed}));
+  card.appendChild(ce("div", {cls: "meta", text: a.joined_count + " / " + a.testers_needed + " 人"}));
   if(a.status === "recruiting"){
     var closeBtn = ce("button", {cls: "secondary", text: "募集終了"});
     closeBtn.addEventListener("click", function(){
@@ -402,7 +435,7 @@ function myAppCard(a){
 }
 
 function joinRow(j){
-  var row = ce("div", {cls: "card"});
+  var row = ce("div", {cls: "list-row"});
   row.appendChild(ce("div", {text: j.google_email}));
   row.appendChild(ce("span", {cls: "badge " + j.status, text: statusLabel(j.status)}));
   row.appendChild(ce("div", {cls: "meta", text: "参加日: " + formatDate(j.joined_at)}));
@@ -464,18 +497,25 @@ function myJoinRow(j, appName){
 function renderLogin(root){
   root.appendChild(ce("h1", {text: "ログイン"}));
   root.appendChild(ce("p", {cls: "small", text: "テスト参加に使うGoogleアカウントでのログインを推奨します。参加登録時にこのアカウントのメールアドレスを使うと管理が簡単です。"}));
-  var gBtn = ce("button", {text: "Googleでログイン（テスト参加に使うアカウント推奨）"});
+  var authCard = ce("div", {cls: "auth-card"});
+
+  var gBtn = ce("button", {cls: "btn-provider"});
+  gBtn.appendChild(ce("span", {cls: "provider-icon", text: "G"}));
+  gBtn.appendChild(document.createTextNode("Googleでログイン"));
   gBtn.addEventListener("click", function(){
     supa.auth.signInWithOAuth({provider: "google", options: {redirectTo: location.origin + location.pathname}});
   });
-  root.appendChild(gBtn);
-  var wrap = ce("div", {attrs: {style: "margin-top:.6rem"}});
-  var hBtn = ce("button", {cls: "secondary", text: "GitHubでログイン"});
+  authCard.appendChild(gBtn);
+
+  var hBtn = ce("button", {cls: "btn-provider"});
+  hBtn.appendChild(ce("span", {cls: "provider-icon", text: "gh"}));
+  hBtn.appendChild(document.createTextNode("GitHubでログイン"));
   hBtn.addEventListener("click", function(){
     supa.auth.signInWithOAuth({provider: "github", options: {redirectTo: location.origin + location.pathname}});
   });
-  wrap.appendChild(hBtn);
-  root.appendChild(wrap);
+  authCard.appendChild(hBtn);
+
+  root.appendChild(authCard);
 }
 
 // ---- nav / auth bootstrap ----
